@@ -216,7 +216,7 @@ class Player {
             explorers[id].setPosition(map[x][y]);
           }
         }
-        else
+        else if(id>=0)
         {
           boolean wandering;
           Explorer target=null;
