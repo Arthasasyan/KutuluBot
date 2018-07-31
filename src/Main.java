@@ -4,10 +4,10 @@ import java.math.*;
 
 class Cell
 {
-  public int x;
-  public int y;
-  public char type; // # or . or w
-  public Entity onCell;
+  protected int x;
+  protected int y;
+  protected char type; // # or . or w
+  protected List<Entity> onCell;
   public Cell()
   {
 
@@ -17,11 +17,9 @@ class Cell
     this.x=x;
     this.y=y;
     this.type=type;
+    this.onCell=new ArrayList<>();
   }
-  public void clear()
-  {
-    this.onCell=null;
-  }
+
   public static boolean isClose(Cell first, Cell second) {
     boolean result = false;
     if(((first.x-1 == second.x) && (first.y==second.y))||(first.x+1 == second.x && first.y==second.y) ||((first.x ==second.x) && (first.y-1==second.y))||(first.x == second.x && first.y+1==second.y))
@@ -29,10 +27,78 @@ class Cell
 
     return result;
   }
+  public void delete(Entity entity)
+  {
+    if(this.onCell.contains(entity))
+    this.onCell.remove(entity);
+  }
+  public void add(Entity entity)
+  {
+    if(!this.onCell.contains(entity))
+      this.onCell.add(entity);
+  }
+
+  public char getType() {
+    return type;
+  }
+
+  public int getX() {
+    return x;
+  }
+
+  public int getY() {
+    return y;
+  }
 
   @Override
   public String toString() {
     return x+" "+y;
+  }
+}
+
+class Shelter extends Cell{
+  private int energy;
+  private int turnsToRecover;
+  private boolean active;
+  public Shelter(int x, int y)
+  {
+    super(x,y,'U');
+    this.energy=10;
+    this.turnsToRecover=0;
+    this.active=true;
+  }
+
+  public int getEnergy() {
+    return energy;
+  }
+
+  public int getTurnsToRecover() {
+    return turnsToRecover;
+  }
+
+  public boolean isActive() {
+    return active;
+  }
+
+  public void recoverHealth(Explorer explorer)
+  {
+    if(energy>0) {
+      energy--;
+      explorer.setSanity(explorer.getSanity()+10);//to be changed
+    }
+
+    if(energy==0) {
+      this.turnsToRecover = 50; //to be changed
+      this.active=false;
+    }
+  }
+  public void recover()
+  {
+    turnsToRecover--;
+    if(turnsToRecover==0) {
+      energy = 10;
+      this.active=true;
+    }
   }
 }
 
@@ -47,7 +113,7 @@ class Entity
     this.position=position;
     this.type=type;
     this.id=id;
-    this.position.onCell=this;
+    this.position.add(this);
 
   }
 
@@ -65,7 +131,13 @@ class Entity
 
   public void setPosition(Cell position) {
     this.position = position;
+    this.position.add(this);
   }
+  public void clearPosition()
+  {
+    this.position.delete(this);
+  }
+
 }
 
 class Explorer extends Entity{
@@ -92,7 +164,7 @@ class MainExplorer extends Explorer
   }
   public void moveTo(Entity entity)
   {
-    this.position.clear();
+    this.clearPosition();
     System.out.println("MOVE "+entity.getPossition());
     
     
@@ -100,7 +172,7 @@ class MainExplorer extends Explorer
   public void moveTo(Cell cell)
   {
     if(cell.type!='#') { //if correct cell
-      this.position.clear();
+      this.clearPosition();
 
       System.out.println("MOVE " + cell);
     }
@@ -109,7 +181,7 @@ class MainExplorer extends Explorer
   }
   public void escapeFrom(Cell[][] map)
   {
-    this.position.clear();
+    this.clearPosition();
     Cell to=this.position;
     if(map[this.position.x+1][this.position.y].onCell==null && map[this.position.x+1][this.position.y].type=='.')
      to= map[this.position.x+1][this.position.y];
@@ -153,11 +225,22 @@ class Player {
     if (in.hasNextLine()) {
       in.nextLine();
     }
+    List<Shelter> shelters = new ArrayList<>();
     Cell[][] map = new Cell[width][height];
     for (int i = 0; i < height; i++) {
       String line = in.nextLine();
-      for(int j=0;j<line.length();j++)
-        map[j][i]=new Cell(j,i,line.charAt(j));
+      for(int j=0;j<line.length();j++) {
+        if(line.charAt(j)=='U')
+        {
+          Shelter shelter=new Shelter(j,i);
+          shelters.add(shelter);
+          map[j][i]=shelter;
+        }
+        else {
+          map[j][i] = new Cell(j, i, line.charAt(j));
+        }
+      }
+
       System.err.println(line);
     }
 
@@ -242,7 +325,7 @@ class Player {
           walked=true;
           System.err.println("escaping from minion on "+ m.getPossition());
         }
-        m.getPossition().clear();
+        m.clearPosition();
 
       }
       if(!walked)
